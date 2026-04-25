@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // football-data.org API — routed through Cloudflare Worker proxy
 // Dev:  Vite dev server proxy (/fbd → api.football-data.org/v4)
 // Prod: Cloudflare Worker URL injected via VITE_PROXY_URL env variable
@@ -8,6 +9,29 @@ const PROXY_URL = import.meta.env.VITE_PROXY_URL ?? '';
 // In dev we use the Vite server-side proxy to avoid CORS on localhost:5173
 // In prod we call the CF Worker which adds proper CORS headers
 const BASE = import.meta.env.DEV ? '/fbd' : PROXY_URL;
+=======
+// football-data.org API — free tier
+// Get your free key at: https://www.football-data.org/client/register
+// In dev, use Vite proxy (/fbd → api.football-data.org/v4) to bypass CORS on localhost:5173
+const API_BASE = 'https://api.football-data.org/v4';
+const PROD_PROXY = import.meta.env.VITE_FOOTBALL_DATA_PROXY?.trim();
+
+function toProxiedUrl(target) {
+  if (!PROD_PROXY) return target;
+  // Support either a placeholder style proxy URL (`...{url}`)
+  // or prefix style proxy URL (`https://proxy/?`).
+  if (PROD_PROXY.includes('{url}')) {
+    return PROD_PROXY.replace('{url}', encodeURIComponent(target));
+  }
+  return `${PROD_PROXY}${encodeURIComponent(target)}`;
+}
+
+function buildUrl(path) {
+  if (import.meta.env.DEV) return `/fbd${path}`;
+  const target = `${API_BASE}${path}`;
+  return toProxiedUrl(target);
+}
+>>>>>>> a74ead60a94da207fb4cd72a9f70b4eb6ddf27de
 
 // Competition metadata
 export const COMPETITIONS = {
@@ -57,11 +81,26 @@ async function throttle() {
 }
 
 async function fetchDirect(url, apiKey) {
+<<<<<<< HEAD
   // In dev, apiKey is sent directly (Vite proxy forwards to football-data.org)
   // In prod, the Cloudflare Worker injects the key — we still pass it here
   // for the dev path; the worker ignores any client-sent X-Auth-Token
   const headers = apiKey ? { 'X-Auth-Token': apiKey } : {};
   const res = await fetch(url, { headers });
+=======
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { 'X-Auth-Token': apiKey }
+    });
+  } catch (err) {
+    const likelyCorsIssue = !import.meta.env.DEV && !PROD_PROXY;
+    if (likelyCorsIssue) {
+      throw new Error('Network request blocked (likely CORS). Set VITE_FOOTBALL_DATA_PROXY for production.');
+    }
+    throw err;
+  }
+>>>>>>> a74ead60a94da207fb4cd72a9f70b4eb6ddf27de
 
   // Always read throttle headers so we stay ahead of the limiter
   parseThrottleHeaders(res);
@@ -86,7 +125,7 @@ async function fetchDirect(url, apiKey) {
 }
 
 export async function get(path, apiKey, ttl = 60_000) {
-  const url = `${BASE}${path}`;
+  const url = buildUrl(path);
 
   // Cache hit
   const hit = cache.get(url);

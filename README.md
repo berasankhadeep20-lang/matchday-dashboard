@@ -66,6 +66,20 @@ Every push to `main` auto-deploys to:
 https://berasankhadeep20-lang.github.io/matchday-dashboard/
 ```
 
+### Production CORS note (football-data.org)
+
+football-data.org free-tier keys may reject browser requests from some origins.
+If your deployed site shows CORS errors, set a proxy in your deployment environment:
+
+```bash
+VITE_FOOTBALL_DATA_PROXY="https://your-proxy.example.com/?url="
+```
+
+`VITE_FOOTBALL_DATA_PROXY` supports either:
+- prefix format (e.g. `https://your-proxy.example.com/?url=`)
+- placeholder format (e.g. `https://your-proxy.example.com/fetch?target={url}`)
+
+
 ---
 
 ## 🌐 API
