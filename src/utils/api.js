@@ -1,8 +1,24 @@
 // football-data.org API — free tier
 // Get your free key at: https://www.football-data.org/client/register
 // In dev, use Vite proxy (/fbd → api.football-data.org/v4) to bypass CORS on localhost:5173
-// In prod (GitHub Pages), call the API directly — github.io origins are allowed
-const BASE = import.meta.env.DEV ? '/fbd' : 'https://api.football-data.org/v4';
+const API_BASE = 'https://api.football-data.org/v4';
+const PROD_PROXY = import.meta.env.VITE_FOOTBALL_DATA_PROXY?.trim();
+
+function toProxiedUrl(target) {
+  if (!PROD_PROXY) return target;
+  // Support either a placeholder style proxy URL (`...{url}`)
+  // or prefix style proxy URL (`https://proxy/?`).
+  if (PROD_PROXY.includes('{url}')) {
+    return PROD_PROXY.replace('{url}', encodeURIComponent(target));
+  }
+  return `${PROD_PROXY}${encodeURIComponent(target)}`;
+}
+
+function buildUrl(path) {
+  if (import.meta.env.DEV) return `/fbd${path}`;
+  const target = `${API_BASE}${path}`;
+  return toProxiedUrl(target);
+}
 
 // Competition metadata
 export const COMPETITIONS = {
@@ -52,9 +68,18 @@ async function throttle() {
 }
 
 async function fetchDirect(url, apiKey) {
-  const res = await fetch(url, {
-    headers: { 'X-Auth-Token': apiKey }
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { 'X-Auth-Token': apiKey }
+    });
+  } catch (err) {
+    const likelyCorsIssue = !import.meta.env.DEV && !PROD_PROXY;
+    if (likelyCorsIssue) {
+      throw new Error('Network request blocked (likely CORS). Set VITE_FOOTBALL_DATA_PROXY for production.');
+    }
+    throw err;
+  }
 
   // Always read throttle headers so we stay ahead of the limiter
   parseThrottleHeaders(res);
@@ -79,7 +104,7 @@ async function fetchDirect(url, apiKey) {
 }
 
 export async function get(path, apiKey, ttl = 60_000) {
-  const url = `${BASE}${path}`;
+  const url = buildUrl(path);
 
   // Cache hit
   const hit = cache.get(url);
