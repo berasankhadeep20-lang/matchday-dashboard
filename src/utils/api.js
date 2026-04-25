@@ -1,8 +1,13 @@
-// football-data.org API — free tier
-// Get your free key at: https://www.football-data.org/client/register
-// In dev, use Vite proxy (/fbd → api.football-data.org/v4) to bypass CORS on localhost:5173
-// In prod (GitHub Pages), call the API directly — github.io origins are allowed
-const BASE = import.meta.env.DEV ? '/fbd' : 'https://api.football-data.org/v4';
+// football-data.org API — routed through Cloudflare Worker proxy
+// Dev:  Vite dev server proxy (/fbd → api.football-data.org/v4)
+// Prod: Cloudflare Worker URL injected via VITE_PROXY_URL env variable
+//       The worker holds the API key as a secret — nothing sensitive in the bundle
+
+const PROXY_URL = import.meta.env.VITE_PROXY_URL ?? '';
+
+// In dev we use the Vite server-side proxy to avoid CORS on localhost:5173
+// In prod we call the CF Worker which adds proper CORS headers
+const BASE = import.meta.env.DEV ? '/fbd' : PROXY_URL;
 
 // Competition metadata
 export const COMPETITIONS = {
@@ -52,9 +57,11 @@ async function throttle() {
 }
 
 async function fetchDirect(url, apiKey) {
-  const res = await fetch(url, {
-    headers: { 'X-Auth-Token': apiKey }
-  });
+  // In dev, apiKey is sent directly (Vite proxy forwards to football-data.org)
+  // In prod, the Cloudflare Worker injects the key — we still pass it here
+  // for the dev path; the worker ignores any client-sent X-Auth-Token
+  const headers = apiKey ? { 'X-Auth-Token': apiKey } : {};
+  const res = await fetch(url, { headers });
 
   // Always read throttle headers so we stay ahead of the limiter
   parseThrottleHeaders(res);

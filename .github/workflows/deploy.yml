@@ -34,6 +34,10 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          # Set this in: repo → Settings → Secrets and Variables → Actions → Variables
+          # Name: VITE_PROXY_URL
+          # Value: https://matchday-proxy.YOUR-NAME.workers.dev
+          VITE_PROXY_URL: ${{ vars.VITE_PROXY_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

@@ -11,7 +11,7 @@ import PlayersPage from './pages/PlayersPage';
 function AppInner() {
   const { username, apiKey, activeTab } = useApp();
 
-  if (!username || !apiKey) return <WelcomeModal />;
+  if (!username) return <WelcomeModal />;
 
   const pages = {
     home:     <HomePage />,
